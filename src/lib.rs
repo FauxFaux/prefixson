@@ -5,6 +5,7 @@ use std::str::FromStr;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until1, take_while, take_while1};
 use nom::combinator::{map, opt};
+use nom::multi::count;
 use nom::IResult;
 
 #[derive(Debug, Hash, Eq, PartialEq)]
@@ -52,19 +53,11 @@ fn parse_hash(input: &str) -> IResult<&str, Obj> {
     let (input, len) = parse_len(input)?;
     let (input, _) = drop_ws(input)?;
     let (input, _) = tag("{")(input)?;
-    let (mut input, _) = drop_ws(input)?;
-    let mut map = HashMap::with_capacity(len);
-    eprintln!("{} entry map", len);
-
-    for _ in 0..len {
-        let (new_input, (k, v)) = parse_kv(input)?;
-        input = new_input;
-        dbg!(&k, &v);
-        map.insert(k, v);
-    }
+    let (input, _) = drop_ws(input)?;
+    let (input, pairs) = count(parse_kv, len)(input)?;
     let (input, _) = tag("}")(input)?;
     let (input, _) = drop_ws(input)?;
-    Ok((input, Obj::Hash(map)))
+    Ok((input, Obj::Hash(pairs.into_iter().collect())))
 }
 
 fn parse_kv(input: &str) -> IResult<&str, (Simple, Obj)> {
